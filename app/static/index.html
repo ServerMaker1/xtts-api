@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS API - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%); }
+        .card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .glow { box-shadow: 0 0 30px rgba(99,102,241,0.3); }
+        .token-hidden { filter: blur(5px); transition: filter 0.3s; cursor: pointer; }
+        .token-hidden:hover { filter: blur(0); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .loading { animation: pulse 1.5s infinite; }
+        .stat-card:hover { transform: translateY(-2px); transition: all 0.3s; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="card rounded-2xl p-8 w-full max-w-md glow">
+            <div class="text-center mb-8">
+                <i class="fas fa-microphone-alt text-5xl text-indigo-400 mb-4"></i>
+                <h1 class="text-3xl font-bold">TTS API Dashboard</h1>
+                <p class="text-gray-400 mt-2">Enter your master token to login</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Master Token</label>
+                    <input type="password" id="masterToken" placeholder="Enter your master token..." 
+                        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500">
+                </div>
+                <button onclick="login()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Login
+                </button>
+                <p id="loginError" class="text-red-400 text-sm text-center hidden"></p>
+            </div>
+            <div class="mt-6 p-4 bg-gray-800/50 rounded-lg">
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Your master token was provided by the API owner. It's stored locally in your browser.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden">
+        <!-- Header -->
+        <header class="border-b border-white/10 p-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-microphone-alt text-2xl text-indigo-400"></i>
+                    <span class="text-xl font-bold">TTS API Dashboard</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="userName" class="text-gray-400"></span>
+                    <span id="userBadge" class="px-3 py-1 bg-indigo-600 rounded-full text-xs font-semibold"></span>
+                    <button onclick="logout()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto p-6">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="card rounded-xl p-6 stat-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Total Requests</p>
+                            <p id="statRequests" class="text-3xl font-bold mt-1">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-indigo-600/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-chart-line text-indigo-400 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-6 stat-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Audio Generated</p>
+                            <p id="statMinutes" class="text-3xl font-bold mt-1">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-clock text-green-400 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-6 stat-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">API Keys</p>
+                            <p id="statKeys" class="text-3xl font-bold mt-1">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-yellow-600/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-key text-yellow-400 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card rounded-xl p-6 stat-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm">Characters Used</p>
+                            <p id="statChars" class="text-3xl font-bold mt-1">-</p>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-font text-purple-400 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column - API Keys -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Create API Key -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-xl font-semibold mb-4">
+                            <i class="fas fa-plus-circle text-indigo-400 mr-2"></i>Create New API Key
+                        </h2>
+                        <div class="flex gap-4">
+                            <input type="text" id="newKeyName" placeholder="Key name (e.g., 'My Discord Bot')" 
+                                class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500">
+                            <button onclick="createApiKey()" class="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold transition">
+                                <i class="fas fa-plus mr-2"></i>Create
+                            </button>
+                        </div>
+                        <div id="newKeyResult" class="mt-4 hidden">
+                            <div class="bg-green-900/30 border border-green-600 rounded-lg p-4">
+                                <p class="text-green-400 text-sm mb-2"><i class="fas fa-check-circle mr-1"></i>API Key Created!</p>
+                                <div class="flex items-center gap-2">
+                                    <code id="newKeyValue" class="flex-1 bg-gray-900 px-3 py-2 rounded font-mono text-sm"></code>
+                                    <button onclick="copyNewKey()" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <p class="text-yellow-400 text-xs mt-2"><i class="fas fa-exclamation-triangle mr-1"></i>Save this key now! It won't be shown again.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Keys List -->
+                    <div class="card rounded-xl p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold">
+                                <i class="fas fa-key text-yellow-400 mr-2"></i>Your API Keys
+                            </h2>
+                            <span id="keyCount" class="text-gray-400 text-sm"></span>
+                        </div>
+                        <div id="keysList" class="space-y-3">
+                            <div class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl"></i>
+                                <p class="mt-2">Loading keys...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Usage History -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-xl font-semibold mb-4">
+                            <i class="fas fa-history text-blue-400 mr-2"></i>Recent Usage
+                        </h2>
+                        <div id="usageHistory" class="space-y-2 max-h-64 overflow-y-auto">
+                            <div class="text-center py-4 text-gray-500">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Charts & Info -->
+                <div class="space-y-6">
+                    <!-- Language Usage -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-language text-green-400 mr-2"></i>Language Usage
+                        </h2>
+                        <canvas id="languageChart" height="200"></canvas>
+                    </div>
+
+                    <!-- Voice Usage -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-user-circle text-purple-400 mr-2"></i>Voice Usage
+                        </h2>
+                        <canvas id="voiceChart" height="200"></canvas>
+                    </div>
+
+                    <!-- Quick Test -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-play-circle text-indigo-400 mr-2"></i>Quick Test
+                        </h2>
+                        <div class="space-y-3">
+                            <input type="text" id="testText" placeholder="Enter text to speak..." 
+                                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                            <select id="testLang" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm">
+                                <option value="en">English</option>
+                                <option value="hi">Hindi</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                            </select>
+                            <button onclick="testTTS()" id="testBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 py-2 rounded-lg text-sm font-semibold transition">
+                                <i class="fas fa-volume-up mr-2"></i>Generate & Play
+                            </button>
+                            <audio id="testAudio" controls class="w-full hidden mt-2"></audio>
+                        </div>
+                    </div>
+
+                    <!-- API Info -->
+                    <div class="card rounded-xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-info-circle text-blue-400 mr-2"></i>API Endpoint
+                        </h2>
+                        <code class="block bg-gray-900 p-3 rounded text-xs break-all">
+                            POST <span id="apiEndpoint"></span>/tts
+                        </code>
+                        <div class="mt-3 text-xs text-gray-400">
+                            <p><strong>Headers:</strong></p>
+                            <p>• key: YOUR_API_KEY</p>
+                            <p>• Content-Type: application/json</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+        let currentUser = null;
+        let hfToken = null;
+        let languageChart = null;
+        let voiceChart = null;
+
+        // Check if already logged in
+        window.onload = function() {
+            const savedToken = localStorage.getItem('masterToken');
+            const savedHfToken = localStorage.getItem('hfToken');
+            if (savedToken) {
+                document.getElementById('masterToken').value = savedToken;
+                hfToken = savedHfToken;
+                login();
+            }
+            document.getElementById('apiEndpoint').textContent = API_BASE;
+        };
+
+        // Login
+        async function login() {
+            const token = document.getElementById('masterToken').value.trim();
+            if (!token) {
+                showLoginError('Please enter your master token');
+                return;
+            }
+
+            try {
+                const headers = { 'key': token, 'Content-Type': 'application/json' };
+                // Add HF auth if private space
+                if (hfToken) {
+                    headers['Authorization'] = `Bearer ${hfToken}`;
+                }
+
+                const response = await fetch(`${API_BASE}/keys`, { headers });
+                
+                if (response.status === 401) {
+                    // Might need HF token for private space
+                    const inputHfToken = prompt('This is a private Space. Enter your HuggingFace token:');
+                    if (inputHfToken) {
+                        hfToken = inputHfToken;
+                        localStorage.setItem('hfToken', hfToken);
+                        return login();
+                    }
+                    showLoginError('Authentication failed');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Invalid token');
+                }
+
+                const data = await response.json();
+                currentUser = { token, ...data };
+                
+                localStorage.setItem('masterToken', token);
+                
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                
+                // Set user info
+                document.getElementById('userName').textContent = `Welcome!`;
+                document.getElementById('userBadge').textContent = data.max_keys === 'unlimited' ? 'OWNER' : 'USER';
+                
+                loadDashboard();
+            } catch (error) {
+                showLoginError('Invalid master token. Please check and try again.');
+            }
+        }
+
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('masterToken');
+            localStorage.removeItem('hfToken');
+            currentUser = null;
+            hfToken = null;
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('masterToken').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+        }
+
+        // Dashboard functions
+        async function loadDashboard() {
+            await Promise.all([
+                loadKeys(),
+                loadStats(),
+                loadUsageHistory()
+            ]);
+        }
+
+        function getHeaders() {
+            const headers = { 'key': currentUser.token, 'Content-Type': 'application/json' };
+            if (hfToken) headers['Authorization'] = `Bearer ${hfToken}`;
+            return headers;
+        }
+
+        async function loadKeys() {
+            try {
+                const response = await fetch(`${API_BASE}/keys`, { headers: getHeaders() });
+                const data = await response.json();
+                
+                const keysList = document.getElementById('keysList');
+                document.getElementById('keyCount').textContent = `${data.keys.length} / ${data.max_keys} keys`;
+                document.getElementById('statKeys').textContent = data.keys.length;
+
+                if (data.keys.length === 0) {
+                    keysList.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-key text-4xl mb-2"></i>
+                            <p>No API keys yet. Create one above!</p>
+                        </div>`;
+                    return;
+                }
+
+                keysList.innerHTML = data.keys.map(key => `
+                    <div class="bg-gray-800/50 rounded-lg p-4 flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold">${key.name || 'Unnamed Key'}</span>
+                                <code class="text-xs bg-gray-700 px-2 py-1 rounded">${key.key_prefix}...</code>
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1">
+                                Created: ${new Date(key.created_at).toLocaleDateString()} 
+                                ${key.last_used ? `• Last used: ${new Date(key.last_used).toLocaleDateString()}` : '• Never used'}
+                            </div>
+                        </div>
+                        <button onclick="revokeKey(${key.id})" class="text-red-400 hover:text-red-300 p-2" title="Revoke Key">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading keys:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`, { headers: getHeaders() });
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('statRequests').textContent = data.total_requests || 0;
+                    document.getElementById('statMinutes').textContent = `${(data.total_audio_seconds / 60).toFixed(1)} min`;
+                    document.getElementById('statChars').textContent = formatNumber(data.total_characters || 0);
+                    
+                    updateCharts(data);
+                } else {
+                    // Stats endpoint might not exist yet
+                    document.getElementById('statRequests').textContent = '0';
+                    document.getElementById('statMinutes').textContent = '0 min';
+                    document.getElementById('statChars').textContent = '0';
+                }
+            } catch (error) {
+                console.log('Stats not available yet');
+            }
+        }
+
+        async function loadUsageHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/usage`, { headers: getHeaders() });
+                if (response.ok) {
+                    const data = await response.json();
+                    const historyEl = document.getElementById('usageHistory');
+                    
+                    if (!data.usage || data.usage.length === 0) {
+                        historyEl.innerHTML = '<div class="text-center py-4 text-gray-500">No usage history yet</div>';
+                        return;
+                    }
+                    
+                    historyEl.innerHTML = data.usage.slice(0, 20).map(u => `
+                        <div class="bg-gray-800/30 rounded p-2 text-xs flex justify-between items-center">
+                            <div>
+                                <span class="text-gray-400">${new Date(u.timestamp).toLocaleString()}</span>
+                                <span class="ml-2 px-2 py-0.5 bg-indigo-600/30 rounded">${u.language}</span>
+                                <span class="ml-1 px-2 py-0.5 bg-purple-600/30 rounded">${u.voice}</span>
+                            </div>
+                            <span class="text-gray-400">${u.characters} chars</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                document.getElementById('usageHistory').innerHTML = '<div class="text-center py-4 text-gray-500">Usage tracking coming soon</div>';
+            }
+        }
+
+        function updateCharts(data) {
+            // Language chart
+            const langCtx = document.getElementById('languageChart').getContext('2d');
+            if (languageChart) languageChart.destroy();
+            
+            const langData = data.language_usage || { en: 1 };
+            languageChart = new Chart(langCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(langData),
+                    datasets: [{
+                        data: Object.values(langData),
+                        backgroundColor: ['#6366f1', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#06b6d4']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af' } } }
+                }
+            });
+
+            // Voice chart
+            const voiceCtx = document.getElementById('voiceChart').getContext('2d');
+            if (voiceChart) voiceChart.destroy();
+            
+            const voiceData = data.voice_usage || { default: 1 };
+            voiceChart = new Chart(voiceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(voiceData),
+                    datasets: [{
+                        data: Object.values(voiceData),
+                        backgroundColor: ['#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af' } } }
+                }
+            });
+        }
+
+        async function createApiKey() {
+            const name = document.getElementById('newKeyName').value.trim();
+            
+            try {
+                const response = await fetch(`${API_BASE}/keys`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ name: name || null })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    alert(data.detail || 'Failed to create key');
+                    return;
+                }
+
+                document.getElementById('newKeyValue').textContent = data.api_key;
+                document.getElementById('newKeyResult').classList.remove('hidden');
+                document.getElementById('newKeyName').value = '';
+                
+                loadKeys();
+            } catch (error) {
+                alert('Error creating API key');
+            }
+        }
+
+        function copyNewKey() {
+            const key = document.getElementById('newKeyValue').textContent;
+            navigator.clipboard.writeText(key);
+            alert('API key copied to clipboard!');
+        }
+
+        async function revokeKey(keyId) {
+            if (!confirm('Are you sure you want to revoke this API key? This cannot be undone.')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/keys/${keyId}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+
+                if (response.ok) {
+                    loadKeys();
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Failed to revoke key');
+                }
+            } catch (error) {
+                alert('Error revoking key');
+            }
+        }
+
+        async function testTTS() {
+            const text = document.getElementById('testText').value.trim();
+            const lang = document.getElementById('testLang').value;
+            
+            if (!text) {
+                alert('Please enter some text');
+                return;
+            }
+
+            const btn = document.getElementById('testBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/tts`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ text, language: lang, format: 'mp3' })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'TTS failed');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                
+                const audio = document.getElementById('testAudio');
+                audio.src = url;
+                audio.classList.remove('hidden');
+                audio.play();
+                
+                loadStats();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-volume-up mr-2"></i>Generate & Play';
+            }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+    </script>
+</body>
+</html>
